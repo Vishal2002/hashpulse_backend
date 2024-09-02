@@ -70,7 +70,7 @@ app.get('/share/:username/:views', async (req, res) => {
     </head>
     <body>
       <script>
-        window.location.href = "${process.env.FRONTEND_URL}";
+        window.location.href = "https://hash-pulse.vercel.app/";
       </script>
     </body>
     </html>
