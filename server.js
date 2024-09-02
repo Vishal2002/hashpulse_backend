@@ -64,15 +64,14 @@ app.get('/share/:username/:views', async (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${username}'s Hashnode Pulse</title>
       <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:site" content="@YourTwitterHandle">
       <meta name="twitter:title" content="${username}'s Hashnode Pulse">
       <meta name="twitter:description" content="Check out ${username}'s Hashnode stats! Total views: ${views}">
       <meta name="twitter:image" content="${imageUrl}">
     </head>
     <body>
-      <h1>${username}'s Hashnode Pulse</h1>
-      <p>Total views: ${views}</p>
-      <img src="${imageUrl}" alt="${username}'s Hashnode Pulse">
+      <script>
+        window.location.href = "${process.env.FRONTEND_URL}";
+      </script>
     </body>
     </html>
   `);
