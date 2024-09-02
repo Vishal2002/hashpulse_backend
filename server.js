@@ -98,23 +98,6 @@ app.get('/generate-image', async (req, res) => {
     res.status(500).send('Error generating image');
   }
 });
-app.get('/share', (req, res) => {
-  const { u, v, p } = req.query;
-  const imageUrl = `https://hashpulse-backend.onrender.com/generate-image?u=${u}&v=${v}&p=${p}`;
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:image" content="${imageUrl}" />
-    </head>
-    <body>
-      <!-- Your page content here -->
-    </body>
-    </html>
-  `;
-  res.send(html);
-});
 
 
 app.listen(3000, () => {
