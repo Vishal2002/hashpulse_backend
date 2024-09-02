@@ -1,104 +1,96 @@
 const express = require('express');
-const { createCanvas, loadImage } = require('canvas');
+const { createCanvas, loadImage, registerFont } = require('canvas');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 
-app.get('/generate-image', async (req, res) => {
-  const { u, v, p } = req.query;
+// Register custom font
+registerFont(path.join(__dirname, 'font', 'Roboto-Bold.ttf'), { family: 'Roboto', weight: 'bold' });
 
-  // Create a canvas
-  const canvas = createCanvas(800, 400);
+async function generateImage(username, views, profilePicture) {
+  const canvas = createCanvas(1200, 630);
   const ctx = canvas.getContext('2d');
 
-  // Draw background with gradient
-  const gradient = ctx.createLinearGradient(0, 0, 800, 400);
-  gradient.addColorStop(0, '#1F1F1F'); // Dark grey
-  gradient.addColorStop(1, '#2C2C2C'); // Slightly lighter dark grey
+  // Background
+  const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+  gradient.addColorStop(0, '#4A148C');
+  gradient.addColorStop(1, '#311B92');
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 800, 400);
+  ctx.fillRect(0, 0, 1200, 630);
 
-  // Get gradient color data
-  const getAverageColor = () => {
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    let r = 0, g = 0, b = 0;
-    let count = 0;
+  // Profile picture
+  if (profilePicture) {
+    const userProfileImage = await loadImage(profilePicture);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(150, 150, 100, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(userProfileImage, 50, 50, 200, 200);
+    ctx.restore();
+  }
 
-    for (let i = 0; i < data.length; i += 4) {
-      r += data[i];
-      g += data[i + 1];
-      b += data[i + 2];
-      count++;
-    }
+  // Text
+  ctx.font = 'bold 60px Roboto';
+  ctx.fillStyle = 'white';
+  ctx.fillText(`${username}'s Hashnode Pulse`, 300, 150);
 
-    r = Math.floor(r / count);
-    g = Math.floor(g / count);
-    b = Math.floor(b / count);
+  ctx.font = 'bold 80px Roboto';
+  ctx.fillText(`Total Views: ${views}`, 300, 250);
 
-    return `rgb(${r},${g},${b})`;
-  };
+  ctx.font = '40px Roboto';
+  ctx.fillText('Powered by HashPulse', 300, 350);
 
-  const averageColor = getAverageColor();
-  // console.log(`Average gradient color: ${averageColor}`);
+  // Hashnode logo
+  const logo = await loadImage(path.join(__dirname, 'images', 'hashnode.png'));
+  ctx.drawImage(logo, 1000, 500, 150, 150);
+
+  return canvas.toBuffer('image/png');
+}
+
+app.get('/share/:username/:views', async (req, res) => {
+  const { username, views } = req.params;
+  const profilePicture = req.query.profilePicture || '';
+
+  const imageUrl = `${req.protocol}://${req.get('host')}/generate-image/${username}/${views}?profilePicture=${encodeURIComponent(profilePicture)}`;
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${username}'s Hashnode Pulse</title>
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:site" content="@YourTwitterHandle">
+      <meta name="twitter:title" content="${username}'s Hashnode Pulse">
+      <meta name="twitter:description" content="Check out ${username}'s Hashnode stats! Total views: ${views}">
+      <meta name="twitter:image" content="${imageUrl}">
+    </head>
+    <body>
+      <h1>${username}'s Hashnode Pulse</h1>
+      <p>Total views: ${views}</p>
+      <img src="${imageUrl}" alt="${username}'s Hashnode Pulse">
+    </body>
+    </html>
+  `);
+});
+
+app.get('/generate-image/:username/:views', async (req, res) => {
+  const { username, views } = req.params;
+  const profilePicture = req.query.profilePicture || '';
 
   try {
-    // Draw user profile picture if provided
-    if (p) {
-      const userProfileImage = await loadImage(p);
-
-      // Save current canvas state before clipping
-      ctx.save();
-
-      // Draw a circle and clip to make the image circular
-      ctx.beginPath();
-      ctx.arc(100, 100, 75, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 10;
-      ctx.stroke();
-      ctx.clip();
-
-      // Draw the user profile picture inside the clipped area
-      ctx.drawImage(userProfileImage, 25, 25, 150, 150);
-
-      // Restore the previous canvas state to stop clipping
-      ctx.restore();
-    }
-
-    // Draw the username text
-    ctx.font = 'bold 28px Arial';
-    ctx.fillStyle = 'white';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-    ctx.shadowBlur = 10;
-    ctx.fillText(`${u}'s Hashnode Pulse`, 200, 70);
-
-    // Draw total views text
-    ctx.font = 'bold 48px Arial';
-    ctx.fillText(`Total Views: ${v}`, 200, 150);
-
-    // Draw an additional engaging message
-    ctx.font = '24px Arial';
-    ctx.fillText(`"Keep up the great work and reach new heights!" 🚀`, 200, 200);
-
-    // Draw the Hashnode logo
-    const logo = await loadImage('./hashnode.png');
-    ctx.drawImage(logo, 650, 30, 100, 100);
-
-    // Convert canvas to image buffer
-    const buffer = canvas.toBuffer('image/png');
-
-    // Send the image
+    const buffer = await generateImage(username, views, profilePicture);
     res.contentType('image/png');
     res.send(buffer);
-
   } catch (error) {
     console.error('Error generating image:', error);
     res.status(500).send('Error generating image');
   }
 });
-
 
 app.listen(3000, () => {
   console.log('Server running on port 3000');
